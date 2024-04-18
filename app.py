@@ -37,7 +37,7 @@ def plot_distributions(df, selected_name, columns):
         plt.tight_layout()
         return fig  # Return the figure object for further use 
 
-def carving_evaluation(carving_image_url,carving_source, years_experience, skill_level):
+def carving_evaluation(carving_image_url,carving_source, years_experience, skill_level, carving_target):
 
     if not api_key:
         st.error("OpenAI API key is not set. Please set it in your environment variables.")
@@ -53,15 +53,16 @@ def carving_evaluation(carving_image_url,carving_source, years_experience, skill
                     Provide an overall score out of 10, adjusted for the carver's reported skill level. 
                     Offer concise, actionable advice on the top three improvement areas, prioritizing suggestions that enhance both the carving's quality and the carver's skills. 
                     Responses should be insightful, friendly, and supportive, fostering constructive criticism and encouraging continual learning and growth.
-                    Responses should use words like you and yours if the carver is me, but use they, theirs, etc, if the carver is another. 
+                    Responses should consistently use words like you and yours if the carver is me, but use they, theirs, etc, if the carver is another for all aspects of the evaluation.
                     """
-    userprompt = f""" I want to better understand the nuances of this piece and how I can apply it to my own craft. To help you, I should also inform you about the following:
+    userprompt = f""" I want to better understand the nuances of this piece created by {carving_source} and any lessons that can be learned. To help you, I should also inform you about the following:
                       The Carver: {carving_source}
                       The Carver's Estimated Years of Experience: {years_experience} 
                       The Carver's Estimated Skill Level: {skill_level}
+                      The Carver's Intended Subject/Carving: {carving_target}
                     """
     response = client.chat.completions.create(
-        model="gpt-4-turbo",
+        model="gpt-4-vision-preview",
         messages=[
             {
                 "role":"system",
@@ -89,7 +90,7 @@ def carving_evaluation(carving_image_url,carving_source, years_experience, skill
         )
     
     return response.choices[0].message.content
-
+        
 def project_generation(projectType, projectGoal, mediumOfInterst, skillLevel, yearsOfExperience, availableTime):
 
     if not api_key:
@@ -186,6 +187,7 @@ def carving_critique():
     if 'evaluation_result' not in st.session_state:
         # User inputs
         user_image = st.text_input("Enter a carving image URL here please", "https://tinyurl.com/3kwxcfwp")
+        reported_carving_target = st.text_input("What item was the carver intending to capture?", "A decorative reef")
         reported_years_experience = st.sidebar.slider("Estimated Carver Years of Experience", 0, 20, 10)
         reported_skill_level = st.sidebar.selectbox("Estimated Carver Skill Level", ["Beginner", "Intermediate", "Advanced"], index=2)
         reported_carving_source = st.sidebar.selectbox("Carving Belongs To", ["Me", "Another"], index=1)
@@ -199,8 +201,9 @@ def carving_critique():
 
             # Simulate a response from an evaluation function
             with st.spinner('Getting your feedback...'):
-                response = carving_evaluation(user_image,reported_carving_source,reported_years_experience,reported_skill_level)
+                response = carving_evaluation(user_image,reported_carving_source,reported_years_experience,reported_skill_level,reported_carving_target)
                 st.session_state['evaluation_result'] = response
+                st.rerun()
 
     if 'evaluation_result' in st.session_state:
         st.image(st.session_state['uploaded_image'], caption='Your Submission')
@@ -210,7 +213,7 @@ def carving_critique():
                 # Clear specific session state entries
                 del st.session_state['uploaded_image']
                 del st.session_state['evaluation_result']
-                del st.session_state['button_pressed']
+                del st.session_state['carving_eval_button_pressed']
                 st.rerun()
 
 def project_creation():
